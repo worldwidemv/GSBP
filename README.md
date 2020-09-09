@@ -34,7 +34,7 @@ An examples on how to setup and use the module can be found in the [examples fol
 
 ## C++ Class for PC Programs
 
-The class files for the general interface class can be found in the __[PC_code folder](./PC_code/readme.md)__.
+The class files for the general interface class can be found in the __[PC_code folder](./PC_code/Cpp/readme.md)__.
 
 The similar design goals are:
 
