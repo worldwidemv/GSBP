@@ -4,7 +4,7 @@ __The GeneralSerialByteProtocol consists of:__
 
 * __a definition for a package based communication protocol suitable for data streams like UART / virtual COM ports and so on,__
 * __a C module for microcontrollers (mostly used/tested with STM32 microcontrollern) implementing this protocol and providing abstracted functions for sending and receiving data__,
-* __ a C++ class for PC programs to send commands to connected devices and receive there data/responses.__
+* __a C++ class for PC programs to send commands to connected devices and receive there data/responses.__
 
 
 ## Package Structure and Protocol Definition
