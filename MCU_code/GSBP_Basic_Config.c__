@@ -1,0 +1,229 @@
+/*
+ * GSBP_Basic_Config.c
+ *
+ *  Created on: Sep 15, 2019
+ *      Author: Markus Valtin
+ */
+
+#include "stdio.h"
+#include "stdbool.h"
+#include "stdint.h"
+#include "string.h"
+#include "main.h"
+#include "GSBP_Basic_Config.h"
+#include "GSBP_Basic.h"
+
+
+#include "MCU_StateMachine.h"
+
+/*
+ * ### Task/Board specific global Variables ###
+ * TODO
+ * Add task/board specific implementation for each available interface
+ */
+#if (GSBP_SETUP__INTERFACE_UART_USED)
+#include "usart.h"
+GSBP_Handle_t GSBP_UART;			// UART interface
+#endif
+#if (GSBP_SETUP__INTERFACE_USB_USED)
+GSBP_Handle_t GSBP_USB;			// real MCU USB interface
+#endif
+
+//uint8_t MCU_State_CurrentState; // comment out if defined elsewhere
+
+/*
+ * ### Task/Board specific Functions
+ */
+
+/*
+ * initialize all handle variables and start the interfaces
+ */
+void GSBP_Init(void)
+{
+	// initialize the global handle list
+	memset(&gCOM, 0, sizeof(gCOM));
+	gCOM.DefaultHandle = 0;
+	gCOM.NextCallbackTimer = HAL_GetTick() +GSBP_SETUP__CALLBACK_PERIOD_IN_MS;
+
+	/*
+	 * TODO
+	 * Add task/board specific implementation for each available interface
+	 */
+
+	// clear the GSBP handles and configure them
+#if (GSBP_SETUP__INTERFACE_UART_USED)
+	memset(&GSBP_UART, 0, sizeof(GSBP_Handle_t));
+	GSBP_UART.InterfaceType = GSBP_InterfaceUART;
+	GSBP_UART.State |=  GSBP_HandleState__HandleDisabled;
+#endif
+
+#if (GSBP_SETUP__INTERFACE_USB_USED)
+	memset(&GSBP_USB, 0, sizeof(GSBP_Handle_t));
+	GSBP_USB.InterfaceType = GSBP_InterfaceUSB;
+	GSBP_USB.State |= GSBP_HandleState__HandleDisabled;
+#endif
+
+	// configure the default handle
+	GSBP_USB.State |= GSBP_HandleState__DefaultHandle;
+
+	// enable the handles if you do not use the GSBP_Management functions
+#if (GSBP_SETUP__INTERFACE_UART_USED)
+	GSBP_InitHandle(&GSBP_UART, &huart2);
+#endif
+
+#if (GSBP_SETUP__INTERFACE_USB_USED)
+	GSBP_InitHandle(&GSBP_USB, NULL);
+#endif
+}
+
+
+
+/*
+ * Check the interface/handle if any new data was received and if so,
+ * check if the package is complete and execute the commands
+ * Input: GSBP interface handle
+ * Output: process another package directly afterwards (true = yes, false = no)
+ */
+bool GSBP_EvaluatePackage(gsbp_PackageRX_t *CMD, GSBP_Handle_t *Handle)
+{
+	gsbpDebugMSG(4, "EvalPackage: CMD:%d; Nr.:%d; Nbytes:%d (%ld)\n", CMD->CommandID, CMD->PackageNumber, CMD->DataSize, HAL_GetTick());
+
+	switch (CMD->CommandID) {
+	// universal commands
+	case NodeInfoCMD:
+		GSBP_SendNodeInfo(Handle);
+		break;
+	case StatusCMD:
+		GSBP_SendStatus(Handle);
+		break;
+	case ResetCMD:
+		GSBP_SendUniversalACK(Handle, ResetCMD, true);
+		MCU_StateChange(MCU_Reset);
+		return false;
+		break;
+
+	// task / board specific implementation
+	case InitCMD:
+	{
+		switch (MCU_State_CurrentState){
+		case MCU_PreInit_Connected:
+		case MCU_PostInit:
+		case MCU_MeasurementActiv:
+		case MCU_MeasurementFinished:
+			// start the initialization -> got to DoInit state
+			MCU_StateChange(MCU_DoInit);
+			return false;
+			break;
+		default:
+			GSBP_SendMSG(Handle, MsgError, MCU_State_CurrentState, E_CMD_NotValidNow, "GSBP: CMD %d not valid in state %d", CMD->CommandID, MCU_State_CurrentState);
+		}
+	}
+	break;
+	case StartMeasurementCMD:
+	{
+		switch (MCU_State_CurrentState){
+		case MCU_PostInit:
+		case MCU_MeasurementFinished:
+			// start the measurement -> got to MeasurementDoStart state
+			MCU_StateChange(MCU_MeasurementDoStart);
+			return false;
+			break;
+		case MCU_MeasurementActiv:
+			// already in the measurement mode -> only send Ack
+			GSBP_SendUniversalACK(Handle, StartMeasurementCMD, true);
+			break;
+		default:
+			GSBP_SendMSG(Handle, MsgError, MCU_State_CurrentState, E_CMD_NotValidNow, "GSBP: CMD %d not valid in state %d", CMD->CommandID, MCU_State_CurrentState);
+		}
+	}
+	break;
+	case StopMeasurementCMD:
+	{
+		switch (MCU_State_CurrentState){
+		case MCU_MeasurementActiv:
+		case MCU_MeasurementFinished:
+			// stop the measurement -> got to MeasurementDoStop state
+			MCU_StateChange(MCU_MeasurementDoStop);
+			return false;
+			break;
+		default:
+			GSBP_SendMSG(Handle, MsgError, MCU_State_CurrentState, E_CMD_NotValidNow, "GSBP: CMD %d not valid in state %d", CMD->CommandID, MCU_State_CurrentState);
+		}
+	}
+	break;
+
+	case DeInitCMD:
+		// reset -> got to MCU_DoDeInit state
+		MCU_StateChange(MCU_DoDeInit);
+		return false;
+		break;
+	default:
+		GSBP_SendMSG(Handle, MsgCriticalError, MCU_State_CurrentState, E_UnknownCMD, "GSBP: unknown CMD %d", CMD->CommandID);
+	}
+
+	// default: process another package directly afterwards
+	return true;
+}
+
+/*
+ * Project specific reimplementation of 'GSBP_SendNodeInfo()'.
+ * Update here things like deviceClass, boardID, serialNumber, and firmwareVersion ....
+ * 
+ * The basic structure of the NodeInfoACK should not be changed, so this universal package is always valid.
+ */
+void GSBP_SendNodeInfo(GSBP_Handle_t *Handle)
+{
+    gCOM.ACK.CommandID = NodeInfoACK;
+    gsbp_ACK_nodeInfo_t* ACK = (gsbp_ACK_nodeInfo_t*)gCOM.ACK.Data;
+    // boardID number, use as you like
+    ACK->boardID = 0x00;
+    // the deviceClass as defind in the GSBP_Setup
+    ACK->deviceClass = GSBP_SETUP__DEVICE_CLASS_ID;
+    // the serial number of the current device
+    ACK->serialNumber = 1904010001; // getSerialNumber();
+    // the version of the GSBP protocol/package definitions
+    ACK->versionProtocol[0] = 0;
+    ACK->versionProtocol[1] = 1;
+    // the current firmware version
+    ACK->versionFirmware[0] = 0;
+    ACK->versionFirmware[1] = 1;
+
+    // ACK->msg is a string or any other custom data
+    sprintf((char *)ACK->msg, "GSBP: NODE DESCRIPTION -> TODO");
+    gCOM.ACK.DataSize = GSBP__COMMAND_SIZE_NODEINFO + strlen((const char*)ACK->msg);
+    if (gCOM.ACK.DataSize > GSBP_SETUP__MAX_PAYLOAD_SIZE_TX){
+        gCOM.ACK.DataSize = GSBP_SETUP__MAX_PAYLOAD_SIZE_TX;
+        gCOM.ACK.Data[GSBP_SETUP__MAX_PAYLOAD_SIZE_TX -1] = 0x00;
+    }
+
+    GSBP_SendPackageAll(Handle, &gCOM.ACK, true);
+}
+
+/*
+ * Project specific reimplementation of 'GSBP_SendStatus()'.
+ * Update/Add things your project needs for the status ACK.
+ * 
+ * The basic structure of the ACK can be adopted to the project needs.
+ */
+void GSBP_SendStatus(GSBP_Handle_t *Handle)
+{
+    gCOM.ACK.CommandID = StatusACK;
+    gsbp_ACK_status_t* ACK = (gsbp_ACK_status_t*)gCOM.ACK.Data;
+    ACK->errorCode = 0;
+    ACK->state = MCU_State_CurrentState;
+
+    // add data or string ...
+    sprintf((char *)ACK->msg, "TODO or set to 0");
+    gCOM.ACK.DataSize = GSBP__COMMAND_SIZE_STATE + strlen((const char*)ACK->msg);
+    if (gCOM.ACK.DataSize > GSBP_SETUP__MAX_PAYLOAD_SIZE_TX){
+        gCOM.ACK.DataSize = GSBP_SETUP__MAX_PAYLOAD_SIZE_TX;
+        gCOM.ACK.Data[GSBP_SETUP__MAX_PAYLOAD_SIZE_TX -1] = 0x00;
+    }
+
+    GSBP_SendPackageAll(Handle, &gCOM.ACK, true);
+}
+
+uint8_t GSBP_GetMcuState()
+{
+	return MCU_State_CurrentState;
+}

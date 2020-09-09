@@ -1,0 +1,216 @@
+/*
+ * # GeneralSerialByteProtocol -> MCU Basic Configuration #
+ *   a communication protocol and software module for microcontroller,
+ *   suitable for various hardware interfaces (UART, USB, BT, ...)
+ *
+ *   Copyright (C) 2015-2020 Markus Valtin <os@markus.valtin.net>
+ *
+ *   Author:  Markus Valtin
+ *   File:    GSBP_Basic_Config.h -> header file with the project specific configuration
+ *   Version: 2 (09.2020)
+ *
+ *   This file is part of GeneralSerialByteProtocol (GSBP).
+ *
+ *   GSBP is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   GSBP is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with Copyright Header.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
+#include "stm32l4xx_hal.h" //TODO: adapt for your STM32 series
+
+#ifndef APP_GSBP_BASIC_CONFIG_H_
+#define APP_GSBP_BASIC_CONFIG_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/*
+ * ### Project specific SETUP ###
+ * TODO
+ * Adjust the following settings
+ */
+#define GSBP_SETUP__DEVICE_CLASS_ID				1		// the device class is used to specify the type of device, so you can check, that you are talking to the right device
+// GSBP interfaces to use
+#define GSBP_SETUP__INTERFACE_UART_USED			0		// 0= not active; 1= is active
+#define GSBP_SETUP__INTERFACE_USB_USED			1		// 0= not active; 1= is active
+#define GSBP_SETUP__NUMBER_OF_HANDLES			1		// How many UART/USB/... connections exist?
+
+// Timeouts for GSPB_SaveBuffer / GSBP_EvaluatePackage
+#define GSBP_SETUP__CALLBACK_PERIOD_IN_MS		200		// How often do you want to check for new packages?
+#define GSBP_SETUP__CALLBACK_PERIOD_MIN_IN_MS	3		// For resets, if we expect a command.
+
+// GSBP payload/package settings
+#define GSBP_SETUP__MAX_PAYLOAD_SIZE_RX         1024	// What is the largest payload/package you expect to receive?
+#define GSBP_SETUP__MAX_PAYLOAD_SIZE_TX         1024	// What is the largest payload/package you expect to send?
+#define GSBP_SETUP__UART_RX_METHOD				2		// 0 = polling based; 1 = interrupt based; 2 = DMA based
+#define GSBP_SETUP__UART_TX_METHOD				2		// 0 = polling based; 1 = interrupt based; 2 = DMA based
+#define GSBP_SETUP__UART_RX_POLLING_TIMEOUT		20		// Timeout for the UART_Read function
+#define GSBP_SETUP__UART_TX_SEND_TIMEOUT		20		// Timeout for the UART_Send function
+
+// GSBP package structure
+#define GSBP_SETUP__N_BYTES_CMD					1		// The number of bytes used for the CMD (1(8bit) or 2(16bit)).
+#define GSBP_SETUP__N_BYTES_DATA_SIZE			2		// The number of bytes used for the byte counter (1(8bit) or 2(16bit)).
+#define GSBP_SETUP__USE_CHECKSUMMES				0		// Include fields for checksum's e.g. if UART is used? 0/1
+#define GSBP_SETUP__USE_DESTINATION				0		// Include fields for the destination e.g. if daisy chaining is used
+
+// ### GSBP Debug defines ###
+// leave empty defines, so the debug code can stay inside of the code
+#define GSBP_SETUP__DEBUG_LEVEL             	6  		// 0=noMSG; 1=errors; 2=warnings; 3=status; 4=debug1; 5=info; 6=debug2; 7=debug3
+#define GSBP_DEBUG_UART                     	huart2	// comment out, if no debug UART is used!
+#define GSBP_DEBUG_UART_USES_DMA				0		// send debug msg blocking (=0; via CPU) or non-blocking (=1; via DMA (needs to be configured))
+														// if DMA is used, some messages, send from ISRs might not show up ....
+#if GSBP_SETUP__DEBUG_LEVEL >= 1
+  #define gsbpDebugToggle_D1()              	HAL_GPIO_TogglePin(D1_GPIO_Port, D1_Pin)
+  #define gsbpDebugToggle_D2()              	HAL_GPIO_TogglePin(D2_GPIO_Port, D2_Pin)
+  #define gsbpDebugToggle_D3()              	HAL_GPIO_TogglePin(D3_GPIO_Port, D3_Pin)
+  #define gsbpDebugToggle_D4()              	//HAL_GPIO_TogglePin(D4_GPIO_Port, D4_Pin)
+  #ifdef GSBP_DEBUG_UART
+    #include "usart.h"
+    #include "string.h"
+  #endif
+#else
+  #define gsbpDebugToggle_D1()
+  #define gsbpDebugToggle_D2()
+  #define gsbpDebugToggle_D3()
+  #define gsbpDebugToggle_D4()
+#endif
+
+
+// GSBP buffer size (override if necessary)
+#define GSBP_SETUP__RX_BUFFER_SIZE				2*GSBP_SETUP__MAX_PAYLOAD_SIZE_RX
+#define GSBP_SETUP__TX_BUFFER_SIZE				2*GSBP_SETUP__MAX_PAYLOAD_SIZE_TX
+
+
+/*
+ * ### Project specific COMMAD and ERROR declarations ###
+ */
+// GSBP Command IDs used
+typedef enum {
+	// GSBP universal commands
+	NodeInfoCMD						= 1,
+	NodeInfoACK						= 2,
+	UniversalACK                	= 3,
+	MessageACK                  	= 4,
+	StatusCMD                   	= 5,
+	StatusACK                   	= 6,
+	ResetCMD                    	= 9,
+	/*
+	 * TODO
+	 * Add task/board specific commands
+	 */
+	InitCMD							= 200,
+	InitACK							= 201,
+	StartApplicationCMD				= 210,
+	ApplicationDataACK				= 216,
+	StopApplicationCMD				= 220,
+	DeInitCMD						= 230,
+//	DeInitACK						= 231
+} gsbp_Command_t;
+
+// GSBP Error codes used with GSBP_SendError()
+typedef enum {
+	// GSBP standard errors
+	E_NoError                       = 0,
+	E_UnknownCMD                	= 1,
+	E_ChecksumMissmatch             = 2,
+	E_EndByteMissmatch              = 3,
+	E_UARTSizeMissmatch             = 4,
+	E_BufferToSmall					= 5,
+	E_DeviceClass_InValid           = 9,
+	E_CMD_NotValidNow				= 11,
+	E_CMD_NotExpected				= 12,
+	E_State_UnknowState				= 15,
+	/*
+	 * TODO
+	 * Add task/board specific error codes
+	 */
+	E_NoNewData						= 20
+} gsbp_ErrorCode_t;
+
+
+/*
+ * ### Project specific global variables ###
+ * TODO
+ * Add task/board specific implementation for each available interface
+ */
+
+// Project specific gsbp_ACK_state_t definition
+#define  GSBP__COMMAND_SIZE_STATE	3
+typedef struct __packed {
+	// TODO
+	uint16_t errorCode;
+	uint8_t  state;
+	uint8_t  msg[GSBP_SETUP__MAX_PAYLOAD_SIZE_TX -GSBP__COMMAND_SIZE_STATE];
+} gsbp_ACK_status_t;
+
+// Include the GSBP_Basic definitions which will use these settings
+#include "GSBP_Basic.h"
+
+#if (GSBP_SETUP__INTERFACE_UART_USED)
+extern GSBP_Handle_t GSBP_UART;
+extern GSBP_Handle_t GSBP_UART_Debug;
+#endif
+#if (GSBP_SETUP__INTERFACE_USB_USED)
+extern GSBP_Handle_t GSBP_USB;
+#endif
+
+
+/*
+ * ### GSBP standard function declarations ###
+ */
+void GSBP_Init(void);
+bool GSBP_EvaluatePackage(gsbp_PackageRX_t *CMD, GSBP_Handle_t *Handle);
+
+uint8_t GSBP_GetMcuState();
+
+
+/*
+ * ### Project specific definitions ###
+ */
+
+//typedef struct __packed {
+    //TODO
+//} gsbp_MyCMD_t;
+
+typedef struct __packed {
+	uint16_t dataSize;
+	uint16_t dataPeriodMS;
+	uint8_t  increment;
+} initCMD_t;
+
+typedef struct __packed {
+	bool     success;
+	uint16_t dataSize;
+	uint16_t dataPeriodMS;
+	uint8_t  increment;
+} initACK_t;
+
+#define GSBP_MEASURMENT_DATA_SIZE_MAX	(GSBP_SETUP__MAX_PAYLOAD_SIZE_TX/2 -20)
+typedef struct __packed {
+	uint16_t numberOfValues;
+	int16_t data[GSBP_MEASURMENT_DATA_SIZE_MAX];
+} measurementDataACK_t;
+
+
+/*
+ * ### Project specific function declarations ###
+ * TODO
+ * Add task/board specific implementation as needed
+ */
+
+
+#ifdef __cplusplus
+}
+#endif
+#endif /* APP_GSBP_BASIC_CONFIG_H_ */
