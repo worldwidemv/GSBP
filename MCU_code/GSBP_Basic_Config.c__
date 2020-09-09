@@ -1,8 +1,29 @@
 /*
- * GSBP_Basic_Config.c
+ * # GeneralSerialByteProtocol -> MCU Basic Project Implementations #
+ *   a communication protocol and software module for microcontroller,
+ *   suitable for various hardware interfaces (UART, USB, BT, ...)
  *
- *  Created on: Sep 15, 2019
- *      Author: Markus Valtin
+ *   Copyright (C) 2015-2020 Markus Valtin <os@markus.valtin.net>
+ *
+ *   Author:  Markus Valtin
+ *   File:    GSBP_Basic_Config.c -> source file with the project specific implementation
+ *   Version: 2 (09.2020)
+ *
+ *   This file is part of GeneralSerialByteProtocol (GSBP).
+ *
+ *   GSBP is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   GSBP is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with Copyright Header.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
 #include "stdio.h"
@@ -13,26 +34,21 @@
 #include "GSBP_Basic_Config.h"
 #include "GSBP_Basic.h"
 
-
-#include "MCU_StateMachine.h"
-
 /*
- * ### Task/Board specific global Variables ###
+ * ### Project specific global Variables ###
  * TODO
- * Add task/board specific implementation for each available interface
+ * Add project specific implementation for each available interface
  */
 #if (GSBP_SETUP__INTERFACE_UART_USED)
 #include "usart.h"
 GSBP_Handle_t GSBP_UART;			// UART interface
 #endif
 #if (GSBP_SETUP__INTERFACE_USB_USED)
-GSBP_Handle_t GSBP_USB;			// real MCU USB interface
+GSBP_Handle_t GSBP_USB;				// real MCU USB interface
 #endif
 
-//uint8_t MCU_State_CurrentState; // comment out if defined elsewhere
-
 /*
- * ### Task/Board specific Functions
+ * ### Project specific Functions
  */
 
 /*
@@ -47,7 +63,7 @@ void GSBP_Init(void)
 
 	/*
 	 * TODO
-	 * Add task/board specific implementation for each available interface
+	 * Add project specific implementation for each available interface
 	 */
 
 	// clear the GSBP handles and configure them
@@ -77,7 +93,6 @@ void GSBP_Init(void)
 }
 
 
-
 /*
  * Check the interface/handle if any new data was received and if so,
  * check if the package is complete and execute the commands
@@ -86,79 +101,51 @@ void GSBP_Init(void)
  */
 bool GSBP_EvaluatePackage(gsbp_PackageRX_t *CMD, GSBP_Handle_t *Handle)
 {
-	gsbpDebugMSG(4, "EvalPackage: CMD:%d; Nr.:%d; Nbytes:%d (%ld)\n", CMD->CommandID, CMD->PackageNumber, CMD->DataSize, HAL_GetTick());
+	gsbpDebugMSG(6, "EvalPackage: CMD:%d; Req# %d; Nbytes:%d (%ld)\n", CMD->CommandID, CMD->RequestID, CMD->DataSize, HAL_GetTick());
 
 	switch (CMD->CommandID) {
 	// universal commands
 	case NodeInfoCMD:
-		GSBP_SendNodeInfo(Handle);
+		GSBP_SendNodeInfo(Handle, CMD->RequestID);
 		break;
 	case StatusCMD:
-		GSBP_SendStatus(Handle);
+		GSBP_SendStatus(Handle, CMD->RequestID);
 		break;
 	case ResetCMD:
 		GSBP_SendUniversalACK(Handle, ResetCMD, true);
-		MCU_StateChange(MCU_Reset);
+		// TODO: implement project specific MCU/project reset
+		//MCU_StateChange(MCU_Reset);
 		return false;
 		break;
 
 	// task / board specific implementation
 	case InitCMD:
-	{
-		switch (MCU_State_CurrentState){
-		case MCU_PreInit_Connected:
-		case MCU_PostInit:
-		case MCU_MeasurementActiv:
-		case MCU_MeasurementFinished:
-			// start the initialization -> got to DoInit state
-			MCU_StateChange(MCU_DoInit);
-			return false;
-			break;
-		default:
-			GSBP_SendMSG(Handle, MsgError, MCU_State_CurrentState, E_CMD_NotValidNow, "GSBP: CMD %d not valid in state %d", CMD->CommandID, MCU_State_CurrentState);
-		}
-	}
-	break;
-	case StartMeasurementCMD:
-	{
-		switch (MCU_State_CurrentState){
-		case MCU_PostInit:
-		case MCU_MeasurementFinished:
-			// start the measurement -> got to MeasurementDoStart state
-			MCU_StateChange(MCU_MeasurementDoStart);
-			return false;
-			break;
-		case MCU_MeasurementActiv:
-			// already in the measurement mode -> only send Ack
-			GSBP_SendUniversalACK(Handle, StartMeasurementCMD, true);
-			break;
-		default:
-			GSBP_SendMSG(Handle, MsgError, MCU_State_CurrentState, E_CMD_NotValidNow, "GSBP: CMD %d not valid in state %d", CMD->CommandID, MCU_State_CurrentState);
-		}
-	}
-	break;
-	case StopMeasurementCMD:
-	{
-		switch (MCU_State_CurrentState){
-		case MCU_MeasurementActiv:
-		case MCU_MeasurementFinished:
-			// stop the measurement -> got to MeasurementDoStop state
-			MCU_StateChange(MCU_MeasurementDoStop);
-			return false;
-			break;
-		default:
-			GSBP_SendMSG(Handle, MsgError, MCU_State_CurrentState, E_CMD_NotValidNow, "GSBP: CMD %d not valid in state %d", CMD->CommandID, MCU_State_CurrentState);
-		}
-	}
-	break;
-
-	case DeInitCMD:
-		// reset -> got to MCU_DoDeInit state
-		MCU_StateChange(MCU_DoDeInit);
+		// start the initialization -> got to DoInit state
+		//MCU_StateChange(MCU_DoInit);
+		// TODO
+		return false; // do not process another package afterwards, because the initialization is done i the main loop
+		break;
+	case StartApplicationCMD:
+		// start the measurement -> got to MeasurementDoStart state
+		//MCU_StateChange(MCU_MeasurementDoStart);
+		// TODO
 		return false;
 		break;
+	case StopApplicationCMD:
+		// stop the measurement -> got to MeasurementDoStop state
+		//MCU_StateChange(MCU_MeasurementDoStop);
+		// TODO
+		return false;
+		break;
+	case DeInitCMD:
+		// reset -> got to MCU_DoDeInit state
+		//MCU_StateChange(MCU_DoDeInit);
+		// TODO
+		return false;
+		break;
+
 	default:
-		GSBP_SendMSG(Handle, MsgCriticalError, MCU_State_CurrentState, E_UnknownCMD, "GSBP: unknown CMD %d", CMD->CommandID);
+		GSBP_SendMSG(Handle, MsgCriticalError, GSBP_GetMcuState(), E_UnknownCMD, "GSBP: unknown CMD %d", CMD->CommandID);
 	}
 
 	// default: process another package directly afterwards
@@ -171,9 +158,10 @@ bool GSBP_EvaluatePackage(gsbp_PackageRX_t *CMD, GSBP_Handle_t *Handle)
  * 
  * The basic structure of the NodeInfoACK should not be changed, so this universal package is always valid.
  */
-void GSBP_SendNodeInfo(GSBP_Handle_t *Handle)
+void GSBP_SendNodeInfo(GSBP_Handle_t *Handle, uint8_t RequestID)
 {
     gCOM.ACK.CommandID = NodeInfoACK;
+    gCOM.ACK.RequestID = RequestID;
     gsbp_ACK_nodeInfo_t* ACK = (gsbp_ACK_nodeInfo_t*)gCOM.ACK.Data;
     // boardID number, use as you like
     ACK->boardID = 0x00;
@@ -205,12 +193,13 @@ void GSBP_SendNodeInfo(GSBP_Handle_t *Handle)
  * 
  * The basic structure of the ACK can be adopted to the project needs.
  */
-void GSBP_SendStatus(GSBP_Handle_t *Handle)
+void GSBP_SendStatus(GSBP_Handle_t *Handle, uint8_t RequestID)
 {
     gCOM.ACK.CommandID = StatusACK;
+    gCOM.ACK.RequestID = RequestID;
     gsbp_ACK_status_t* ACK = (gsbp_ACK_status_t*)gCOM.ACK.Data;
     ACK->errorCode = 0;
-    ACK->state = MCU_State_CurrentState;
+    ACK->state = GSBP_GetMcuState();
 
     // add data or string ...
     sprintf((char *)ACK->msg, "TODO or set to 0");
@@ -225,5 +214,7 @@ void GSBP_SendStatus(GSBP_Handle_t *Handle)
 
 uint8_t GSBP_GetMcuState()
 {
-	return MCU_State_CurrentState;
+	// TODO: return project specific MCU StateMachine state
+	//return MCU_State_CurrentState;
+	return 0;
 }

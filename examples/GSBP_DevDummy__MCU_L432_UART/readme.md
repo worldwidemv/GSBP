@@ -17,7 +17,7 @@ __I am also using Linux symlinks for the files `GSBP_Basic.h` and `GSBP_Basic.c`
 
 Importing is simply done, by going to the menu _File_ > _Import_ and selecting `Existing Project into Workspace`. Then just navigate to the location for this project. The import wizard should have found and selected project, so you can finish the import with the `Finish` button.
 
-The project `GSBP_DevDumy__MCU_L432_UART` should now show up in your _Project Explorer_ and you should be able to compile the project. Double check the paths in the project properties, if you have any compile errors. See also the [general documentation](../../MCU_code/readme.md), section _Using the GSBP Module in Own Projects_ > _Setup_.
+The project `GSBP_DevDummy__MCU_L432_UART` should now show up in your _Project Explorer_ and you should be able to compile the project. Double check the paths in the project properties, if you have any compile errors. See also the [general documentation](../../MCU_code/readme.md), section _Using the GSBP Module in Own Projects_ > _Setup_.
 
 ## PC Connection
 

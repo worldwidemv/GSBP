@@ -29,8 +29,8 @@ The design goals for the GSBP MCU functions are:
 
 An examples on how to setup and use the module can be found in the [examples folder](./examples/readme.md) with the two MCU examples:
 
-* [GSBP_DevDumy__MCU_L432_UART](../examples/GSBP_DevDumy__MCU_L432_UART/readme.md) which uses a UART interface and the UART<->USB feature of the Nucleo-L432KC board and
-* [GSBP_DevDumy__MCU_L432_USB](../examples/GSBP_DevDumy__MCU_L432_USB/readme.md) which uses the USB interface of the STM32L432 MCU featured by the Nucleo-L432KC board.
+* [GSBP_DevDummy__MCU_L432_UART](../examples/GSBP_DevDummy__MCU_L432_UART/readme.md) which uses a UART interface and the UART<->USB feature of the Nucleo-L432KC board and
+* [GSBP_DevDummy__MCU_L432_USB](../examples/GSBP_DevDummy__MCU_L432_USB/readme.md) which uses the USB interface of the STM32L432 MCU featured by the Nucleo-L432KC board.
 
 ## C++ Class for PC Programs
 
@@ -45,3 +45,8 @@ The similar design goals are:
 While the MCU functions can be used directly, the C++ class is not directly usable. Instead, the class should be used to implement the project specific interface class, where the different commands and the project specific workflow is implemented.
 
 An example / reference implementation can be found in the [examples folder](./examples/GSBP_DevDummy__PC_Cpp/readme.md).
+
+## TODOs / Known Bugs
+
+* checksums do not work properly
+* implement hardware based checksums on the STM32

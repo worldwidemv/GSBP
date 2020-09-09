@@ -103,8 +103,8 @@ This header file also defines the global variable `gCOM` which provides access t
 
 Please also look at the examples and there readme.md files:
 
-* `examples/GSBP_DevDumy__MCU_L432_UART` --> [STM32CubeIDE project for the Nucleo-L432KC board using the build in UART - ST-Link bridge](../examples/GSBP_DevDumy__MCU_L432_UART/readme.md)
-* `examples/GSBP_DevDumy__MCU_L432_USB` --> [STM32CubeIDE project for the Nucleo-L432KC board using the USB interface of the MCU](../examples/GSBP_DevDumy__MCU_L432_USB/readme.md)
+* `examples/GSBP_DevDummy__MCU_L432_UART` --> [STM32CubeIDE project for the Nucleo-L432KC board using the build in UART - ST-Link bridge](../examples/GSBP_DevDummy__MCU_L432_UART/readme.md)
+* `examples/GSBP_DevDummy__MCU_L432_USB` --> [STM32CubeIDE project for the Nucleo-L432KC board using the USB interface of the MCU](../examples/GSBP_DevDummy__MCU_L432_USB/readme.md)
 
 
 ### Setup
